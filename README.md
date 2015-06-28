@@ -1,4 +1,4 @@
-# connectedPowerSupply
+# Connected Power Supply
 The connected power supply is a project that a friend and I have been working on for some time now. My hopes are for it to work seemlessly with any mobile device (or any device for that matter). For right now it will serve as a REST API to change values like voltage, current, limiting, frequency, and wave shape. I would like for this to turn into a nice REST library application for the ESP8266 and Arduino boards.
 
 I've written up most of my initial design work to my blog: http://thingable.co/tag/connected-power-supply-unit/
