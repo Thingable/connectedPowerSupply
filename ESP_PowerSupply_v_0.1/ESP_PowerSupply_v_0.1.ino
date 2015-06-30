@@ -23,8 +23,7 @@ Channel channel1;
 Channel channel2;
 
 /* WiFi ssid & password */
-const char* ssid = "SSID";
-const char* password = "password";
+
 
 /* JSON Buffer */
 StaticJsonBuffer<2000> jsonBuffer;                 
@@ -87,9 +86,10 @@ void loop() {
 /* Match Request */ 
 void matchRequest(String request){
 if (request.indexOf("GET") != -1){
-
+  Serial.println("GET");
 }
-if (request.indexOf("GET") != -1){ // Should be else if & POST but changed for testing 
+if (request.indexOf("PUT") != -1){ // Should be else if & POST but changed for testing 
+  Serial.println("PUT");
   writeSerial();
 }
 
