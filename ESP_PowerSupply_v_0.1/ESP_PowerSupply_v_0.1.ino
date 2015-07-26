@@ -1,5 +1,6 @@
 #include <ESP8266WiFi.h>
 #include <ArduinoJson.h>
+#include <String>
 
 class Channel {
   public:
@@ -13,17 +14,19 @@ class Channel {
 };
 
 /* Function Prototypes */
-void matchRequest(String req);
+void matchRequest(String request);
 void readSerial();
 void writeSerial();
 void buildResponse(int index);
+void readRequest(String request);
 
 /* Set up two output channels */
 Channel channel1;
 Channel channel2;
 
 /* WiFi ssid & password */
-
+const char* ssid = "NETGEAR85";
+const char* password = "something69";
 
 /* JSON Buffer */
 StaticJsonBuffer<2000> jsonBuffer;                 
@@ -80,16 +83,18 @@ void loop() {
 
   // Print to client
   ROOT.prettyPrintTo(client);
+
   client.stop();
 }
 
 /* Match Request */ 
 void matchRequest(String request){
 if (request.indexOf("GET") != -1){
-  Serial.println("GET");
+ 
 }
-if (request.indexOf("PUT") != -1){ // Should be else if & POST but changed for testing 
-  Serial.println("PUT");
+if (request.indexOf("POST") != -1){ // Should be else if & POST but changed for testing 
+  //read body
+  readRequest(request);
   writeSerial();
 }
 
@@ -203,6 +208,26 @@ void buildResponse(int index){
   if (index == 403){
     ROOT["errorMessage"] = "Sorry, URI not found";
   }
+}
+
+void readRequest(String request){
+  //Convert String to char array
+  Serial.println(request);
+  int tempSize = request.length();
+  char body[100];
+  for (int i = 0; i <= tempSize; i++){
+    body[i] = request[i];
+  }
+  
+  JsonObject& REQUEST = jsonBuffer.parseObject(body);
+  if (!REQUEST.success()) {
+    Serial.println("parseObject() failed");
+    return;
+  } else {
+    //store values
+  }
+
+  
 }
 
 
