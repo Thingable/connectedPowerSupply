@@ -11,6 +11,7 @@ const int SS_ADC_2 = 9;
 SPISettings mode0(8000000, MSBFIRST, SPI_MODE0);
 SPISettings mode1(8000000, MSBFIRST, SPI_MODE1);
 
+
 void setup() {
   // Set SS to Output
   pinMode(SS_DAC_1, OUTPUT);
@@ -32,7 +33,7 @@ void loop() {
   //setDAC(4.8, 2); // Set DAC_2 to 4.8 Volts
   readADC();
   Serial.println();
-  delay(1000);
+  delay(5000);
 }
 
 /*
@@ -146,8 +147,8 @@ void readADC(){
   // Initialize AIN0 Read
   SPI.beginTransaction(mode1);
   digitalWrite(SS_ADC_2, LOW);
-  SPI.transfer(0b00000000);
-  SPI.transfer(0b11100011);
+  SPI.transfer(0b00010000);
+  SPI.transfer(0b10000011);
   commandByte[0] = SPI.transfer(0);
   commandByte[1] = SPI.transfer(0);
   digitalWrite(SS_ADC_2, HIGH);
@@ -162,8 +163,8 @@ void readADC(){
   // Initialize AIN2 Read AIN0 and Command
   SPI.beginTransaction(mode1);
   digitalWrite(SS_ADC_2, LOW);
-  ain0Byte[0] = SPI.transfer(0b01100000);
-  ain0Byte[1] = SPI.transfer(0b11100011);
+  ain0Byte[0] = SPI.transfer(0b00110110);
+  ain0Byte[1] = SPI.transfer(0b10000011);
   commandByte[0] = SPI.transfer(0);
   commandByte[1] = SPI.transfer(0);
   digitalWrite(SS_ADC_2, HIGH);
@@ -179,7 +180,7 @@ void readADC(){
   SPI.beginTransaction(mode1);
   digitalWrite(SS_ADC_2, LOW);
   ain2Byte[0] = SPI.transfer(0b00000000);
-  ain2Byte[1] = SPI.transfer(0b11110011);
+  ain2Byte[1] = SPI.transfer(0b00010011);
   commandByte[0] = SPI.transfer(0);
   commandByte[1] = SPI.transfer(0);
   digitalWrite(SS_ADC_2, HIGH);
@@ -203,28 +204,41 @@ void readADC(){
   uint16_t ain0Value = 0x0000;
   ain0Value = ain0Byte[0] << 8;
   ain0Value |= ain0Byte[1];
-  int ain0Voltage = ain0Value * 0.000076293945313;
+  double ain0Voltage = ain0Value * 0.000076293945313;
 
   //Convert AIN2 binary to Voltage
   uint16_t ain2Value = 0x0000;
   ain2Value = ain2Byte[0] << 8;
   ain2Value |= ain2Byte[1];
-  int ain2Voltage = ain2Value * 0.000076293945313;
+  double ain2Voltage = ain2Value * 0.000076293945313;
 
+  //Convert Temperature to degrees C
+  uint16_t temperatureValue = 0x0000;
+  temperatureValue = temperatureByte[0] << 8;
+  temperatureValue |= temperatureByte[1];
+  if(temperatureValue > 0x8000){               //If 2's complement negitive (first bit = 1)
+    temperatureValue -= 1;
+    temperatureValue = ~temperatureValue;
+    temperatureValue = temperatureValue * -0.03125;
+  }else{                                      //Else not negitive
+    temperatureValue = temperatureValue * 0.03125;
+  }
+  
   // Write AINO Data
   Serial.println("AIN0:");
   Serial.println(ain0Byte[0], BIN);
   Serial.println(ain0Byte[1], BIN);
-  Serial.println(ain0Voltage, 4);
+  Serial.println(ain0Voltage);
   // Write AIN2 Data
   Serial.println("AIN2");
   Serial.println(ain2Byte[0], BIN);
   Serial.println(ain2Byte[1], BIN);
-  Serial.println(ain2Voltage, 4);
+  Serial.println(ain2Voltage);
   // Write Temperature Data
   Serial.println("Temperature");
   Serial.println(temperatureByte[0], BIN);
   Serial.println(temperatureByte[1], BIN);
+  Serial.println(temperatureValue);
   Serial.println();
 }
 
