@@ -31,10 +31,13 @@ void setup() {
 
 void loop() {
   //setDAC(4.8, 2); // Set DAC_2 to 4.8 Volts
-  readADC();
+  //readADC();
+  writeDigitalPot_1();
   Serial.println();
   delay(5000);
 }
+
+
 
 /*
  * Function Name:   initDACs()
@@ -219,6 +222,7 @@ void readADC(){
   if(temperatureValue > 0x8000){               //If 2's complement negitive (first bit = 1)
     temperatureValue -= 1;
     temperatureValue = ~temperatureValue;
+    temperatureValue <<= 
     temperatureValue = temperatureValue * -0.03125;
   }else{                                      //Else not negitive
     temperatureValue = temperatureValue * 0.03125;
@@ -241,4 +245,62 @@ void readADC(){
   Serial.println(temperatureValue);
   Serial.println();
 }
+
+/*
+ * Function Name:   slaveRegister(int slaveBit)
+ * 
+ * Description:
+ *      Writes the proper slave bit
+ * 
+ * Params:
+ * 
+ * Notes:
+ * 
+ */
+void slaveRegister(int slaveBit){
+  int dataPin = 4;
+  int clockPin = 13;
+  uint8_t slaveByte = 0xFF;
+  if(slaveBit == 0){
+    slaveByte = 0xFE;
+  }else if(slaveBit == 1){
+    slaveByte = 0xFD;
+  }else if(slaveBit == 2){
+    slaveByte = 0xFB;
+  }else if(slaveBit == 3){
+    slaveByte = 0xF7;
+  }else if(slaveBit == 4){
+    slaveByte = 0xFE;
+  }else if(slaveBit == 5){
+    slaveByte = 0xDF;
+  }else if(slaveBit == 6){
+    slaveByte = 0xBF;
+  }else if(slaveBit == 7){
+    slaveByte = 0x7F;
+  }else{
+    slaveByte = 0xFF;
+  }
+  shiftOut(dataPin, clockPin, MSBFIRST, slaveByte);
+}
+
+
+/*
+ * Function Name:   writeDigitalPot_1()
+ * 
+ * Description:
+ *      Writes a value to the AD5290 digital Pot
+ * 
+ * Params:
+ * 
+ * Notes:
+ * 
+ */
+void writeDigitalPot_1(){
+  SPI.beginTransaction(mode1);
+  slaveRegister(1);               //Write SS 1 low
+  SPI.transfer(0b10001000);
+  slaveRegister(8);               //Write all bits high
+  SPI.endTransaction();
+}
+
 
