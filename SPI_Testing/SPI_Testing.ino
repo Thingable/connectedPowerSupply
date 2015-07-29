@@ -7,10 +7,12 @@ const int SS_ADC_1 = 7;
 const int SS_DAC_2 = 8;
 const int SS_ADC_2 = 9;
 
+const int SHIFT_LATCH = 2;
+
 // SPI Speed and mode settings
 SPISettings mode0(8000000, MSBFIRST, SPI_MODE0);
 SPISettings mode1(8000000, MSBFIRST, SPI_MODE1);
-
+SPISettings mode2(8000000, MSBFIRST, SPI_MODE2);
 
 void setup() {
   // Set SS to Output
@@ -18,6 +20,7 @@ void setup() {
   pinMode(SS_ADC_1, OUTPUT);
   pinMode(SS_DAC_2, OUTPUT);
   pinMode(SS_ADC_2, OUTPUT);
+  pinMode(SHIFT_LATCH, OUTPUT);
 
   // Initialize SPI
   SPI.begin();
@@ -27,17 +30,22 @@ void setup() {
   
   // Initialize Debug Serial
   Serial.begin(9600);
+
+  
+  
+  slaveRegister(8);
 }
 
 void loop() {
+  
   //setDAC(4.8, 2); // Set DAC_2 to 4.8 Volts
   //readADC();
-  writeDigitalPot_1();
-  Serial.println();
-  delay(5000);
+  //writeNegitiveDigitalPot();
+  //writeFreqDigitalPot(150); // 8 bit value
+  //writeFreqGen(frequency);  // 
+  //Serial.println();
+  //delay(5000);
 }
-
-
 
 /*
  * Function Name:   initDACs()
@@ -138,7 +146,7 @@ void setDAC(double voltage, int DAC_Number){
  * Params:
  * 
  * Notes:
- *      
+ *      Math is wrong needs tweeking
  */
 void readADC(){
   //Create Byte Arrays
@@ -253,14 +261,15 @@ void readADC(){
  *      Writes the proper slave bit
  * 
  * Params:
- * 
+ *      int slaveBit - the pin that will go low on the slave register
+ *      
  * Notes:
  * 
  */
 void slaveRegister(int slaveBit){
   int dataPin = 4;
   int clockPin = 13;
-  uint8_t slaveByte = 0xFF;
+  uint8_t slaveByte = 0x00;
   if(slaveBit == 0){
     slaveByte = 0xFE;
   }else if(slaveBit == 1){
@@ -278,14 +287,18 @@ void slaveRegister(int slaveBit){
   }else if(slaveBit == 7){
     slaveByte = 0x7F;
   }else{
-    slaveByte = 0xFF;
+    slaveByte = 0x00;
   }
+  digitalWrite(SHIFT_LATCH, LOW);
   shiftOut(dataPin, clockPin, MSBFIRST, slaveByte);
+  digitalWrite(SHIFT_LATCH, HIGH);
+  delayMicroseconds(1);
+  digitalWrite(SHIFT_LATCH, LOW);
 }
 
 
 /*
- * Function Name:   writeDigitalPot_1()
+ * Function Name:   writeNegitiveDigitalPot()
  * 
  * Description:
  *      Writes a value to the AD5290 digital Pot
@@ -295,12 +308,99 @@ void slaveRegister(int slaveBit){
  * Notes:
  * 
  */
-void writeDigitalPot_1(){
+void writeNegitiveDigitalPot(){
   SPI.beginTransaction(mode1);
   slaveRegister(1);               //Write SS 1 low
-  SPI.transfer(0b10001000);
+  SPI.transfer(0b11111111);
   slaveRegister(8);               //Write all bits high
   SPI.endTransaction();
 }
 
+/*
+ * Function Name:   writeFreqDigitalPot()
+ * 
+ * Description:
+ *      Writes a value to the MCP4151 digital Pot for frequency amplitude
+ * 
+ * Params:
+ *      int level - an 8 bit number to set the resistance
+ *      
+ * Notes:
+ * 
+ */
+void writeFreqDigitalPot(int level){
+  SPI.beginTransaction(mode0);
+  slaveRegister(2);
+  SPI.transfer(0);      //Choose the register to write to
+  SPI.transfer(level);  //Set the level (0-255)
+  slaveRegister(8);
+  SPI.endTransaction();
+}
 
+/*
+ * Function Name:   writeFreqGen()
+ * 
+ * Description:
+ *      Writes frequency and phase to the AD9833
+ * 
+ * Params:
+ *      
+ * Notes:
+ * 
+ */
+void writeFreqGen(long frequency){
+  int MSB;
+  int LSB;
+  int phase = 0;
+
+  //We can't just send the actual frequency, we have to calculate the "frequency word".
+  //This amounts to ((desired frequency)/(reference frequency)) x 0x10000000.
+  //calculated_freq_word will hold the calculated result.
+  long calculated_freq_word;
+  float AD9833Val = 0.00000000;
+
+  AD9833Val = (((float)(frequency))/16000000);
+  calculated_freq_word = AD9833Val*0x10000000;
+
+  //Once we've got that, we split it up into separate bytes.
+  MSB = (int)((calculated_freq_word & 0xFFFC000)>>14); //14 bits
+  LSB = (int)(calculated_freq_word & 0x3FFF);
+
+  //Set control bits DB15 ande DB14 to 0 and one, respectively, for frequency register 0
+  LSB |= 0x4000;
+  MSB |= 0x4000;
+ 
+  phase &= 0xC000;
+ 
+  WriteRegisterAD9833(0x2100); // Write command register
+
+  //Set the frequency==========================
+  WriteRegisterAD9833(LSB); //lower 14 bits
+  WriteRegisterAD9833(MSB); //upper 14 bits
+  WriteRegisterAD9833(phase); //mid-low
+ 
+  //Power it back up
+  //WriteRegisterAD9833(0x2020); //square
+  WriteRegisterAD9833(0x2000); //sin
+  //WriteRegisterAD9833(0x2002); //triangle 
+}
+
+/*
+ * Function Name:   WriteRegisterAD9837()
+ * 
+ * Description:
+ *      Writes data to the AD9837 Frequency Generator
+ * 
+ * Params:
+ *     int dat - the data to be written 
+ *     
+ * Notes:
+ *     
+ */
+void WriteRegisterAD9833(int dat){
+  slaveRegister(3);
+  SPI.beginTransaction(mode2);
+  SPI.transfer(highByte(dat));
+  SPI.transfer(lowByte(dat));
+  slaveRegister(8);
+}  
