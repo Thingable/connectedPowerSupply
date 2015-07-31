@@ -7,6 +7,8 @@ const int SS_ADC_1 = 7;
 const int SS_DAC_2 = 8;
 const int SS_ADC_2 = 9;
 
+const int dataPin = 4;
+const int clockPin = 13;
 const int SHIFT_LATCH = 2;
 
 // SPI Speed and mode settings
@@ -21,6 +23,8 @@ void setup() {
   pinMode(SS_DAC_2, OUTPUT);
   pinMode(SS_ADC_2, OUTPUT);
   pinMode(SHIFT_LATCH, OUTPUT);
+  pinMode(dataPin, OUTPUT);
+  pinMode(clockPin, OUTPUT);
 
   // Initialize SPI
   SPI.begin();
@@ -30,14 +34,10 @@ void setup() {
   
   // Initialize Debug Serial
   Serial.begin(9600);
-
-  
-  
-  slaveRegister(8);
 }
 
 void loop() {
-  
+  slaveRegister(5);
   //setDAC(4.8, 2); // Set DAC_2 to 4.8 Volts
   //readADC();
   //writeNegitiveDigitalPot();
@@ -267,9 +267,7 @@ void readADC(){
  * 
  */
 void slaveRegister(int slaveBit){
-  int dataPin = 4;
-  int clockPin = 13;
-  uint8_t slaveByte = 0x00;
+  uint8_t slaveByte = 0xFF;
   if(slaveBit == 0){
     slaveByte = 0xFE;
   }else if(slaveBit == 1){
@@ -287,8 +285,9 @@ void slaveRegister(int slaveBit){
   }else if(slaveBit == 7){
     slaveByte = 0x7F;
   }else{
-    slaveByte = 0x00;
+    slaveByte = 0xFF;
   }
+  Serial.println(slaveByte, BIN);
   digitalWrite(SHIFT_LATCH, LOW);
   shiftOut(dataPin, clockPin, MSBFIRST, slaveByte);
   digitalWrite(SHIFT_LATCH, HIGH);
