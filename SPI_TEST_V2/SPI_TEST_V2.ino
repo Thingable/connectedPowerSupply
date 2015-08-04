@@ -1,22 +1,38 @@
 #include <SPI.h>
 
-int dataPin = 4;
-int clockPin = 13;
+// Define SPI Slave Select Pins
+const int SS_DAC_1 = 6;
+const int SS_ADC_1 = 7;
+const int SS_DAC_2 = 8;
+const int SS_ADC_2 = 9;
+
+const int dataPin = 4;
+const int clockPin = 13;
 const int SHIFT_LATCH = 2;
 
+int i = 0;
+
 // SPI Speed and mode settings
-SPISettings mode0(4000000, MSBFIRST, SPI_MODE0);
-SPISettings mode1(4000000, MSBFIRST, SPI_MODE1);
-SPISettings mode2(4000000, MSBFIRST, SPI_MODE2);
-SPISettings mode3(4000000, MSBFIRST, SPI_MODE3);
+SPISettings mode0(500000, MSBFIRST, SPI_MODE0);
+SPISettings mode1(1000000, MSBFIRST, SPI_MODE1);
+SPISettings mode2(1000000, MSBFIRST, SPI_MODE2);
+SPISettings mode3(1000000, MSBFIRST, SPI_MODE3);
 
 void setup() {
+  // Set SS to Output
+  pinMode(SS_DAC_1, OUTPUT);
+  pinMode(SS_ADC_1, OUTPUT);
+  pinMode(SS_DAC_2, OUTPUT);
+  pinMode(SS_ADC_2, OUTPUT);
+  pinMode(SHIFT_LATCH, OUTPUT);
   pinMode(dataPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
-  pinMode(SHIFT_LATCH, OUTPUT);
 
   // Initialize SPI
   SPI.begin();
+
+  //Initialize DACs
+  initDACs();
   
   Serial.begin(9600);
   delay(1000);
@@ -24,9 +40,109 @@ void setup() {
 
 void loop() {
   //slaveRegister(3);
-  //writeNegitiveDigitalPot(250);
-  writeFreqGen(4000);
-  delay(1000);
+
+  //setDAC(1, 2); // Set DAC_2 to 4.8 Volts
+  //if(i > 255){
+    //i = 0;
+  //}
+  writeNegitiveDigitalPot(0);
+  //Serial.println(i);
+  //i += 1;
+  //writeFreqGen(4000);
+
+  //Serial.println();
+  delay(10000);
+  
+}
+
+/*
+ * Function Name:   initDACs()
+ * 
+ * Description:
+ *      Initializes both DACs by writing the proper values to command register
+ * 
+ * Params:
+ * 
+ * Notes:
+ * 
+ */
+void initDACs(){
+  SPI.beginTransaction(mode1);
+  digitalWrite(SS_DAC_1, LOW);
+  SPI.transfer(0b01000000);
+  SPI.transfer(0b10000000);
+  SPI.transfer(0b0000000);
+  digitalWrite(SS_DAC_1, HIGH);
+  SPI.endTransaction();
+  
+  SPI.beginTransaction(mode1);
+  digitalWrite(SS_DAC_2, LOW);
+  SPI.transfer(0b01000000);
+  SPI.transfer(0b10000000);
+  SPI.transfer(0b0000000);
+  digitalWrite(SS_DAC_2, HIGH);
+  SPI.endTransaction();
+}
+
+/*
+ * Function Name:  setDAC()
+ *      
+ * Description:
+ *      Sets the specified voltage for the specified channel
+ *      
+ * Params:
+ *      voltage -     the voltage value to be set
+ *      DAC_Number -  the channel number of the DAC of interest
+ *      
+ * Notes:
+ *      Currently does not write the specified voltage, only writes 4.8 Volts
+ */
+void setDAC(double voltage, int DAC_Number){
+  // Convert voltage to 16 bit DAC value (1 bit = 0.000076293945313 Volts)
+  float floatingDAC_Value = (voltage / 0.000076293945313) + 0.5; // Approximate voltage 
+  uint32_t DAC_Value = floatingDAC_Value;
+ 
+  // DAC command bits
+  uint32_t writeInput=     0b00010000; // Write input register
+  uint32_t updateDAC =     0b00100000; // Update DAC
+  uint32_t writeDACInput = 0x00030000; // Write both DAC and input register
+  uint32_t writeControl =  0x00040000; // Write control register
+
+  // Combine command and DAC value and break up 24 bits into 3 bytes
+  //uint32_t SPI_Command = writeDACInput << 8; // Write Command data and shift 12 bits
+  //Serial.println(SPI_Command);
+  uint32_t SPI_Command = writeDACInput | DAC_Value;                   // Bitwise Or DAC value
+  SPI_Command <<= 4;
+
+  uint8_t Byte[3] = {0x00, 0x00, 0x00};       // Make byte array initialize to 0
+  Byte[0] = (SPI_Command >> 16);  // Write first byte
+  Byte[1] = (SPI_Command >> 8);   // Write second byte
+  Byte[2] = (SPI_Command);        // Write third byte
+
+  SPI.beginTransaction(mode1);
+  if(DAC_Number == 1){
+    digitalWrite(SS_DAC_1, LOW);
+    //SPI.transfer(Byte[0]);
+    //SPI.transfer(Byte[2]);
+    //SPI.transfer(Byte[3]);
+    SPI.transfer(0b00111111);
+    SPI.transfer(0b01011100);
+    SPI.transfer(0b1111000);
+    digitalWrite(SS_DAC_1, HIGH);
+  }else if(DAC_Number == 2){
+    digitalWrite(SS_DAC_2, LOW);
+    //SPI.transfer(Byte[0]);
+    //SPI.transfer(Byte[2]);
+    //SPI.transfer(Byte[3]);
+    SPI.transfer(0b00111000);
+    SPI.transfer(0b00000000);
+    SPI.transfer(0b00001000);
+    digitalWrite(SS_DAC_2, HIGH);
+  }else{
+    Serial.println("Nope Chuck Testa");
+  }
+  SPI.endTransaction();
+  
 }
 
 /*
@@ -69,13 +185,14 @@ void slaveRegister(int slaveBit){
   digitalWrite(SHIFT_LATCH, LOW);
   
   shiftOut(dataPin, clockPin, MSBFIRST, slaveByte);
-  
-  digitalWrite(SHIFT_LATCH, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(SHIFT_LATCH, LOW);
 
   SPI.begin();
-  delay(10);
+}
+
+void latch(){
+  digitalWrite(SHIFT_LATCH, HIGH);
+  
+  digitalWrite(SHIFT_LATCH, LOW);
 }
 
 /*
@@ -90,13 +207,16 @@ void slaveRegister(int slaveBit){
  * 
  */
 void writeNegitiveDigitalPot(uint8_t value){
-  
-  SPI.beginTransaction(mode1);
   slaveRegister(1);               //Write SS 1 low
+  latch();
+  digitalWrite(dataPin, HIGH);
+  SPI.beginTransaction(mode0);
   SPI.transfer(value);
   Serial.println(value, BIN);
-  slaveRegister(8);               //Write all bits high
   SPI.endTransaction();
+  latch();
+  digitalWrite(dataPin, LOW);
+  
 }
 
 /*
