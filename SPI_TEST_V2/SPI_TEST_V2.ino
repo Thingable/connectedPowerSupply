@@ -42,16 +42,18 @@ void loop() {
   //slaveRegister(3);
 
   //setDAC(1, 2); // Set DAC_2 to 4.8 Volts
-  //if(i > 255){
-    //i = 0;
-  //}
-  writeNegitiveDigitalPot(0);
-  //Serial.println(i);
-  //i += 1;
+
+  for(int i = 0; i <= 255; i++){
+    writeNegitiveDigitalPot(i);
+    Serial.println(i);
+    delay(100);
+  }
+
+  
   //writeFreqGen(4000);
 
   //Serial.println();
-  delay(10000);
+  delay(1000);
   
 }
 
@@ -189,6 +191,17 @@ void slaveRegister(int slaveBit){
   SPI.begin();
 }
 
+/*
+ * Function Name:   latch()
+ * 
+ * Description:
+ *      latches the shift register 
+ * 
+ * Params:
+ * 
+ * Notes:
+ *      this is required because the shift register and mosi devices share a clock pin
+ */
 void latch(){
   digitalWrite(SHIFT_LATCH, HIGH);
   
@@ -212,7 +225,6 @@ void writeNegitiveDigitalPot(uint8_t value){
   digitalWrite(dataPin, HIGH);
   SPI.beginTransaction(mode0);
   SPI.transfer(value);
-  Serial.println(value, BIN);
   SPI.endTransaction();
   latch();
   digitalWrite(dataPin, LOW);
@@ -257,6 +269,7 @@ void writeFreqGen(long frequency){
   phase &= 0xC000;
   
   slaveRegister(3);
+  latch();
   
   WriteRegisterAD9833(0x2100); // Write command register
 
@@ -264,13 +277,16 @@ void writeFreqGen(long frequency){
   WriteRegisterAD9833(LSB); //lower 14 bits
   WriteRegisterAD9833(MSB); //upper 14 bits
   WriteRegisterAD9833(phase); //mid-low
- 
+
+  digitalWrite(dataPin, HIGH);
+  
   //Power it back up
   WriteRegisterAD9833(0x2020); //square
   //WriteRegisterAD9833(0x2000); //sin
   //WriteRegisterAD9833(0x2002); //triangle 
 
-   slaveRegister(8);
+  latch();
+  digitalWrite(dataPin, LOW);
 }
 
 /*
@@ -286,10 +302,8 @@ void writeFreqGen(long frequency){
  *     
  */
 void WriteRegisterAD9833(int dat){
-  
   SPI.beginTransaction(mode2);
   SPI.transfer(highByte(dat));
   SPI.transfer(lowByte(dat));
   SPI.endTransaction();
- 
 }  
