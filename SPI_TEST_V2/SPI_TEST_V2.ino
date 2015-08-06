@@ -1,4 +1,7 @@
 #include <SPI.h>
+//#include "TimerOne.h"
+//#include <avr/io.h>
+//#include <avr/interrupt.h>
 
 // Define SPI Slave Select Pins
 const int SS_DAC_1 = 6;
@@ -10,15 +13,20 @@ const int dataPin = 4;
 const int clockPin = 13;
 const int SHIFT_LATCH = 2;
 
-int i = 0;
 
 // SPI Speed and mode settings
-SPISettings mode0(500000, MSBFIRST, SPI_MODE0);
+SPISettings mode0(1000000, MSBFIRST, SPI_MODE0);
 SPISettings mode1(1000000, MSBFIRST, SPI_MODE1);
 SPISettings mode2(1000000, MSBFIRST, SPI_MODE2);
 SPISettings mode3(1000000, MSBFIRST, SPI_MODE3);
 
 void setup() {
+  //Timer1.initialize(1);
+  //Timer1.pwm(10, 512);
+  
+
+
+  
   // Set SS to Output
   pinMode(SS_DAC_1, OUTPUT);
   pinMode(SS_ADC_1, OUTPUT);
@@ -27,12 +35,20 @@ void setup() {
   pinMode(SHIFT_LATCH, OUTPUT);
   pinMode(dataPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
+  pinMode(10, OUTPUT);
+
+  analogWrite(10, 127);
 
   // Initialize SPI
   SPI.begin();
 
   //Initialize DACs
   initDACs();
+
+  //Initialize Freq Gen
+  writeFreqGen(4000);
+
+  writeFreqDigitalPot(100);
   
   Serial.begin(9600);
   delay(1000);
@@ -40,18 +56,24 @@ void setup() {
 
 void loop() {
   //slaveRegister(3);
+  //latch();
 
   //setDAC(1, 2); // Set DAC_2 to 4.8 Volts
-
+  
+  /*
   for(int i = 0; i <= 255; i++){
-    writeNegitiveDigitalPot(i);
+    //writeNegitiveDigitalPot(i);
+    writeFreqDigitalPot(i);
     Serial.println(i);
     delay(100);
   }
+  */
+  
+  //writeFreqDigitalPot(8);
+
+  writeFreqGen(2000);
 
   
-  //writeFreqGen(4000);
-
   //Serial.println();
   delay(1000);
   
@@ -281,9 +303,9 @@ void writeFreqGen(long frequency){
   digitalWrite(dataPin, HIGH);
   
   //Power it back up
-  WriteRegisterAD9833(0x2020); //square
+  //WriteRegisterAD9833(0x2020); //square
   //WriteRegisterAD9833(0x2000); //sin
-  //WriteRegisterAD9833(0x2002); //triangle 
+  WriteRegisterAD9833(0x2002); //triangle 
 
   latch();
   digitalWrite(dataPin, LOW);
@@ -307,3 +329,27 @@ void WriteRegisterAD9833(int dat){
   SPI.transfer(lowByte(dat));
   SPI.endTransaction();
 }  
+
+/*
+ * Function Name:   writeFreqDigitalPot()
+ * 
+ * Description:
+ *      Writes a value to the MCP4151 digital Pot for frequency amplitude
+ * 
+ * Params:
+ *      int level - an 8 bit number to set the resistance
+ *      
+ * Notes:
+ * 
+ */
+void writeFreqDigitalPot(int level){
+  slaveRegister(2);
+  latch();
+  digitalWrite(dataPin, HIGH);
+  SPI.beginTransaction(mode0);
+  SPI.transfer(0);      //Choose the register to write to
+  SPI.transfer(level);  //Set the level (0-255)
+  SPI.endTransaction();
+  latch();
+  digitalWrite(dataPin, LOW);
+}
