@@ -1,15 +1,20 @@
 #include <SPI.h>
 
-
 // SPI Speed and mode settings
 SPISettings mode0(1000000, MSBFIRST, SPI_MODE0);
 SPISettings mode1(1000000, MSBFIRST, SPI_MODE1);
 SPISettings mode2(1000000, MSBFIRST, SPI_MODE2);
 SPISettings mode3(1000000, MSBFIRST, SPI_MODE3);
 
-const uint8_t dataPin = 4;
-const uint8_t ssReset = 1, ssNegPot = 2, ssFreqPot = 3, ssFreqGen = 4;
-const uint8_t ssTFT1DC = 5, ssSD = 6, ssTFT2DC = 7, ssExtra = 8;
+// Define SPI Slave Select Pins
+const int SS_DAC_1 = 6;
+const int SS_ADC_1 = 7;
+const int SS_DAC_2 = 8;
+const int SS_ADC_2 = 9;
+
+const uint8_t DATA_PIN = 4;
+const uint8_t SS_RESET = 0, SS_NEGPOT = 1, SS_FPOT = 2, SS_FGEN = 3;
+const uint8_t SS_TFT1DC = 4, SS_SD = 5, SS_TFT2DC = 6, SS_EXTRA = 7;
 
 void setup() {
 
@@ -26,9 +31,6 @@ void setup() {
   TCCR1A = _BV(COM1B0);              //toggle OC1B on compare match
   OCR1A = 7;                         //top value for counter (1 for 4.00396MHz, 7 for 1.000975MHz) 
   TCCR1B = _BV(WGM12) | _BV(CS10);   //CTC mode, prescaler clock/1
-
-
-
 }
 
 void loop() {
@@ -38,6 +40,19 @@ void loop() {
   }
 }
 
+
+/*
+ * Function Name:   slaveRegister(int slaveBit)
+ * 
+ * Description:
+ *      Writes the proper slave bit
+ * 
+ * Params:
+ *      int slaveBit - the pin that will go low on the slave register
+ *      
+ * Notes:
+ * 
+ */
 void slaveRegister(uint8_t slaveBit) {
   SPI.end();
   uint8_t slaveByte = 0xFF;
@@ -67,6 +82,17 @@ void slaveRegister(uint8_t slaveBit) {
   SPI.begin();
 }
 
+/*
+ * Function Name:   writeNegitiveDigitalPot()
+ * 
+ * Description:
+ *      Writes a value to the AD5290 digital Pot
+ * 
+ * Params:
+ * 
+ * Notes:
+ * 
+ */
 void writeNegPot(uint8_t value){
   slaveRegister(ssNegPot);        // Write ssNegPot low
   PORTD |= _BV(4);           // toggle dataPin HIGH
@@ -78,19 +104,5 @@ void writeNegPot(uint8_t value){
   PORTD &= ~_BV(4);   // toggle dataPin LOW
   
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
