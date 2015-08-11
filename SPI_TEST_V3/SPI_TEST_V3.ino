@@ -47,6 +47,18 @@ void loop() {
   }
 }
 
+/*
+ * Function Name:   slaveRegister(int slaveBit)
+ * 
+ * Description:
+ *      Writes the proper slave bit
+ * 
+ * Params:
+ *      int slaveBit - the pin that will go low on the slave register
+ *      
+ * Notes:
+ * 
+ */
 void slaveRegister(uint8_t slaveBit) {
   SPI.end();
   uint8_t slaveByte = 0xFF;
@@ -76,6 +88,17 @@ void slaveRegister(uint8_t slaveBit) {
   SPI.begin();
 }
 
+/*
+ * Function Name:   writeNegitiveDigitalPot()
+ * 
+ * Description:
+ *      Writes a value to the AD5290 digital Pot
+ * 
+ * Params:
+ * 
+ * Notes:
+ * 
+ */
 void writeNegPot(uint8_t value){
   slaveRegister(SS_NEGPOT);        // Write ssNegPot low
   PORTD |= _BV(4);           // toggle DATA_PIN HIGH
