@@ -6,15 +6,13 @@ SPISettings mode1(1000000, MSBFIRST, SPI_MODE1);
 SPISettings mode2(1000000, MSBFIRST, SPI_MODE2);
 SPISettings mode3(1000000, MSBFIRST, SPI_MODE3);
 
-<<<<<<< HEAD
-=======
+
 // Define SPI Slave Select Pins
 const int SS_DAC_1 = 6;
 const int SS_ADC_1 = 7;
 const int SS_DAC_2 = 8;
 const int SS_ADC_2 = 9;
 
->>>>>>> origin/master
 const uint8_t DATA_PIN = 4;
 const uint8_t SS_RESET = 0, SS_NEGPOT = 1, SS_FPOT = 2, SS_FGEN = 3;
 const uint8_t SS_TFT1DC = 4, SS_SD = 5, SS_TFT2DC = 6, SS_EXTRA = 7;
