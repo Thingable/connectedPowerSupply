@@ -36,8 +36,8 @@ void setup() {
   OCR1A = 0;                         //top value for counter (0 for 8.00185MHz, 1 for 4.00396MHz, 7 for 1.000975MHz) 
   TCCR1B = _BV(WGM12) | _BV(CS10);   //CTC mode, prescaler clock/1
 
-  writeFreqDigitalPot(175);
-
+  writeFreqDigitalPot(200);
+  //writeFreqGen(4000);
 }
 
 void loop() {
@@ -46,8 +46,8 @@ void loop() {
     delay(100);
   }*/
 
-  writeFreqGen(400);
-
+  writeFreqGen(4000);
+  delay(2000);
   
 }
 
@@ -128,10 +128,10 @@ void writeNegPot(uint8_t value){
  * 
  */
 void writeFreqGen(long frequency){
-  int MSB;
-  int LSB;
+  uint16_t MSB;
+  uint16_t LSB;
   uint32_t phase = 0;
-
+/*
   //We can't just send the actual frequency, we have to calculate the "frequency word".
   //This amounts to ((desired frequency)/(reference frequency)) x 0x10000000.
   //calculated_freq_word will hold the calculated result.
@@ -146,25 +146,41 @@ void writeFreqGen(long frequency){
   //Once we've got that, we split it up into separate bytes.
   MSB = (int)((calculated_freq_word & 0xFFFC000)>>14); //14 bits
   LSB = (int)(calculated_freq_word & 0x3FFF);
-
+*/
   //Set control bits DB15 ande DB14 to 0 and one, respectively, for frequency register 0
-  LSB |= 0x4000;
-  MSB |= 0x4000;
+  LSB = 0x50C7;
+  MSB = 0x4000;
  
-  phase &= 0xC000;
+  phase = 0xC000;
   
   slaveRegister(SS_FGEN);
 
-  
-  WriteRegisterAD9833(0x2100); // Write command register
-
-  //Set the frequency==========================
-  WriteRegisterAD9833(LSB); //lower 14 bits
-  WriteRegisterAD9833(MSB); //upper 14 bits
-  WriteRegisterAD9833(phase); //mid-low
-
   PORTD |= _BV(4);           // toggle DATA_PIN HIGH
-  
+  WriteRegisterAD9833(0x2100); // Write command register
+  PORTD |= _BV(2);   // toggle latchPin HIGH
+  PORTD &= ~_BV(2);   // toggle latchPin LOW
+  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW
+  slaveRegister(SS_FGEN);
+  //Set the frequency==========================
+  PORTD |= _BV(4);           // toggle DATA_PIN HIGH
+  WriteRegisterAD9833(LSB); //lower 14 bits
+  PORTD |= _BV(2);   // toggle latchPin HIGH
+  PORTD &= ~_BV(2);   // toggle latchPin LOW
+  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW  
+  slaveRegister(SS_FGEN);
+  PORTD |= _BV(4);           // toggle DATA_PIN HIGH
+  WriteRegisterAD9833(MSB); //upper 14 bits
+  PORTD |= _BV(2);   // toggle latchPin HIGH
+  PORTD &= ~_BV(2);   // toggle latchPin LOW
+  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW  
+  slaveRegister(SS_FGEN);
+  PORTD |= _BV(4);           // toggle DATA_PIN HIGH
+  WriteRegisterAD9833(phase); //mid-low
+  PORTD |= _BV(2);   // toggle latchPin HIGH
+  PORTD &= ~_BV(2);   // toggle latchPin LOW
+  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW
+  slaveRegister(SS_FGEN);
+  PORTD |= _BV(4);           // toggle DATA_PIN HIGH
   //Power it back up
   //WriteRegisterAD9833(0x2020); //square
   WriteRegisterAD9833(0x2000); //sin
