@@ -1,4 +1,5 @@
-#include <SPI.h>
+#include <BPS_SPI.h>
+
 
 // SPI Speed and mode settings
 SPISettings mode0(1000000, MSBFIRST, SPI_MODE0);
@@ -7,11 +8,13 @@ SPISettings mode2(1000000, MSBFIRST, SPI_MODE2);
 SPISettings mode3(1000000, MSBFIRST, SPI_MODE3);
 
 
+
 // Define SPI Slave Select Pins
 const int SS_DAC_1 = 6;
 const int SS_ADC_1 = 7;
 const int SS_DAC_2 = 8;
 const int SS_ADC_2 = 9;
+
 
 const uint8_t DATA_PIN = 4;
 const uint8_t SS_RESET = 0, SS_NEGPOT = 1, SS_FPOT = 2, SS_FGEN = 3;
@@ -32,6 +35,9 @@ void setup() {
   TCCR1A = _BV(COM1B0);              //toggle OC1B on compare match
   OCR1A = 1;                         //top value for counter (1 for 4.00396MHz, 7 for 1.000975MHz) 
   TCCR1B = _BV(WGM12) | _BV(CS10);   //CTC mode, prescaler clock/1
+
+
+
 }
 
 void loop() {
@@ -41,19 +47,6 @@ void loop() {
   }
 }
 
-
-/*
- * Function Name:   slaveRegister(int slaveBit)
- * 
- * Description:
- *      Writes the proper slave bit
- * 
- * Params:
- *      int slaveBit - the pin that will go low on the slave register
- *      
- * Notes:
- * 
- */
 void slaveRegister(uint8_t slaveBit) {
   SPI.end();
   uint8_t slaveByte = 0xFF;
@@ -83,19 +76,8 @@ void slaveRegister(uint8_t slaveBit) {
   SPI.begin();
 }
 
-/*
- * Function Name:   writeNegitiveDigitalPot()
- * 
- * Description:
- *      Writes a value to the AD5290 digital Pot
- * 
- * Params:
- * 
- * Notes:
- * 
- */
 void writeNegPot(uint8_t value){
-  slaveRegister(ssNegPot);        // Write ssNegPot low
+  slaveRegister(SS_NEGPOT);        // Write ssNegPot low
   PORTD |= _BV(4);           // toggle DATA_PIN HIGH
   SPI.beginTransaction(mode0);
   SPI.transfer(value);
@@ -107,7 +89,6 @@ void writeNegPot(uint8_t value){
 }
 
 
-<<<<<<< HEAD
 /*
  * Function Name:   writeFreqGen()
  * 
@@ -122,7 +103,7 @@ void writeNegPot(uint8_t value){
 void writeFreqGen(long frequency){
   int MSB;
   int LSB;
-  int phase = 0;
+  uint32_t phase = 0;
 
   //We can't just send the actual frequency, we have to calculate the "frequency word".
   //This amounts to ((desired frequency)/(reference frequency)) x 0x10000000.
@@ -145,8 +126,8 @@ void writeFreqGen(long frequency){
  
   phase &= 0xC000;
   
-  slaveRegister(3);
-  latch();
+  slaveRegister(SS_FPOT);
+
   
   WriteRegisterAD9833(0x2100); // Write command register
 
@@ -155,16 +136,36 @@ void writeFreqGen(long frequency){
   WriteRegisterAD9833(MSB); //upper 14 bits
   WriteRegisterAD9833(phase); //mid-low
 
-  digitalWrite(DATA_PIN, HIGH);
+  PORTD |= _BV(4);           // toggle DATA_PIN HIGH
   
   //Power it back up
   //WriteRegisterAD9833(0x2020); //square
   //WriteRegisterAD9833(0x2000); //sin
   WriteRegisterAD9833(0x2002); //triangle 
 
-  latch();
-  digitalWrite(DATA_PIN, LOW);
+  PORTD |= _BV(2);   // toggle latchPin HIGH
+  PORTD &= ~_BV(2);   // toggle latchPin LOW
+  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW
 }
+
+/*
+ * Function Name:   WriteRegisterAD9833()
+ * 
+ * Description:
+ *      Writes data to the AD9833 Frequency Generator
+ * 
+ * Params:
+ *     int dat - the data to be written 
+ *     
+ * Notes:
+ *     
+ */
+void WriteRegisterAD9833(int dat){
+  SPI.beginTransaction(mode2);
+  SPI.transfer(highByte(dat));
+  SPI.transfer(lowByte(dat));
+  SPI.endTransaction();
+}  
 
 /*
  * Function Name:   writeFreqDigitalPot()
@@ -179,14 +180,15 @@ void writeFreqGen(long frequency){
  * 
  */
 void writeFreqDigitalPot(int level){
-  slaveRegister(2);
-  digitalWrite(DATA_PIN, HIGH);
+  slaveRegister(SS_FPOT);
+  PORTD |= _BV(4);           // toggle DATA_PIN HIGH
   SPI.beginTransaction(mode0);
   SPI.transfer(0);      //Choose the register to write to
   SPI.transfer(level);  //Set the level (0-255)
   SPI.endTransaction();
-  latch();
-  digitalWrite(DATA_PIN, LOW);
+  PORTD |= _BV(2);   // toggle latchPin HIGH
+  PORTD &= ~_BV(2);   // toggle latchPin LOW
+  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW
 }
 
 
@@ -200,5 +202,3 @@ void writeFreqDigitalPot(int level){
 
 
 
-=======
->>>>>>> origin/master
