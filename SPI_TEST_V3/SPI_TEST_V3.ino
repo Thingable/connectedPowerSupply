@@ -33,18 +33,22 @@ void setup() {
   
   
   TCCR1A = _BV(COM1B0);              //toggle OC1B on compare match
-  OCR1A = 1;                         //top value for counter (1 for 4.00396MHz, 7 for 1.000975MHz) 
+  OCR1A = 0;                         //top value for counter (0 for 8.00185MHz, 1 for 4.00396MHz, 7 for 1.000975MHz) 
   TCCR1B = _BV(WGM12) | _BV(CS10);   //CTC mode, prescaler clock/1
 
-
+  writeFreqDigitalPot(175);
 
 }
 
 void loop() {
-  for (int i=0; i<256; i++) {
+  /*for (int i=0; i<256; i++) {
     writeNegPot(i);
     delay(100);
-  }
+  }*/
+
+  writeFreqGen(400);
+
+  
 }
 
 /*
@@ -134,7 +138,7 @@ void writeFreqGen(long frequency){
   long calculated_freq_word;
   float AD9833Val = 0.00000000;
 
-  AD9833Val = (((float)(frequency))/16000000);
+  AD9833Val = (((float)(frequency))/8001850);  // actual clk pin freqency tested
   calculated_freq_word = AD9833Val*0x10000000;
   Serial.println(frequency);
   Serial.println(calculated_freq_word);  
@@ -149,7 +153,7 @@ void writeFreqGen(long frequency){
  
   phase &= 0xC000;
   
-  slaveRegister(SS_FPOT);
+  slaveRegister(SS_FGEN);
 
   
   WriteRegisterAD9833(0x2100); // Write command register
@@ -163,8 +167,8 @@ void writeFreqGen(long frequency){
   
   //Power it back up
   //WriteRegisterAD9833(0x2020); //square
-  //WriteRegisterAD9833(0x2000); //sin
-  WriteRegisterAD9833(0x2002); //triangle 
+  WriteRegisterAD9833(0x2000); //sin
+  //WriteRegisterAD9833(0x2002); //triangle 
 
   PORTD |= _BV(2);   // toggle latchPin HIGH
   PORTD &= ~_BV(2);   // toggle latchPin LOW
