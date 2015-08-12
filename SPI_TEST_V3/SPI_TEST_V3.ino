@@ -21,7 +21,7 @@ const uint8_t SS_RESET = 0, SS_NEGPOT = 1, SS_FPOT = 2, SS_FGEN = 3;
 const uint8_t SS_TFT1DC = 4, SS_SD = 5, SS_TFT2DC = 6, SS_EXTRA = 7;
 
 void setup() {
-
+  Serial.begin(9600);
   SPI.begin();   // Initialize SPI
   
   PORTB |= 0b00111011;  // sets PB5:0 to HIGH or LOW output
@@ -36,17 +36,26 @@ void setup() {
   OCR1A = 0;                         //top value for counter (0 for 8.00185MHz, 1 for 4.00396MHz, 7 for 1.000975MHz) 
   TCCR1B = _BV(WGM12) | _BV(CS10);   //CTC mode, prescaler clock/1
 
-  writeFreqDigitalPot(200);
+  writeFreqDigitalPot(100);  //**********Problem with changing values***************
   //writeFreqGen(4000);
+ 
+  WriteRegisterAD9833(0x2100); // set reset 0010000100000000
+  WriteRegisterAD9833(0xC000); // set phase 0
+  WriteRegisterAD9833(0x2000); // unset reset 0 & set sine
+  //WriteRegisterAD9833(0x2020); // unset reset 0 & set square
+  //WriteRegisterAD9833(0x2002); // unset reset 0 & set triangle
+  //writeFreqGen(4000);
+
 }
 
 void loop() {
   /*for (int i=0; i<256; i++) {
-    writeNegPot(i);
+    writeFreqDigitalPot(i);
+    Serial.println(i);
     delay(100);
   }*/
 
-  writeFreqGen(4000);
+  //writeFreqGen(4000);
   delay(2000);
   
 }
@@ -148,37 +157,29 @@ void writeFreqGen(long frequency){
   LSB = (int)(calculated_freq_word & 0x3FFF);
 */
   //Set control bits DB15 ande DB14 to 0 and one, respectively, for frequency register 0
-  LSB = 0x50C7;
-  MSB = 0x4000;
+  LSB = 0x4000;
+  MSB = 0x7FFF;
  
   phase = 0xC000;
   
-  slaveRegister(SS_FGEN);
+  /*slaveRegister(SS_FGEN);
 
   PORTD |= _BV(4);           // toggle DATA_PIN HIGH
   WriteRegisterAD9833(0x2100); // Write command register
-  PORTD |= _BV(2);   // toggle latchPin HIGH
-  PORTD &= ~_BV(2);   // toggle latchPin LOW
-  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW
-  slaveRegister(SS_FGEN);
+  */ 
+  
   //Set the frequency==========================
-  PORTD |= _BV(4);           // toggle DATA_PIN HIGH
+  
   WriteRegisterAD9833(LSB); //lower 14 bits
-  PORTD |= _BV(2);   // toggle latchPin HIGH
-  PORTD &= ~_BV(2);   // toggle latchPin LOW
-  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW  
-  slaveRegister(SS_FGEN);
-  PORTD |= _BV(4);           // toggle DATA_PIN HIGH
+  
   WriteRegisterAD9833(MSB); //upper 14 bits
-  PORTD |= _BV(2);   // toggle latchPin HIGH
-  PORTD &= ~_BV(2);   // toggle latchPin LOW
-  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW  
-  slaveRegister(SS_FGEN);
+  
+  /*slaveRegister(SS_FGEN);
   PORTD |= _BV(4);           // toggle DATA_PIN HIGH
   WriteRegisterAD9833(phase); //mid-low
   PORTD |= _BV(2);   // toggle latchPin HIGH
   PORTD &= ~_BV(2);   // toggle latchPin LOW
-  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW
+  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW 
   slaveRegister(SS_FGEN);
   PORTD |= _BV(4);           // toggle DATA_PIN HIGH
   //Power it back up
@@ -188,7 +189,7 @@ void writeFreqGen(long frequency){
 
   PORTD |= _BV(2);   // toggle latchPin HIGH
   PORTD &= ~_BV(2);   // toggle latchPin LOW
-  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW
+  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW   */
 }
 
 /*
@@ -204,10 +205,19 @@ void writeFreqGen(long frequency){
  *     
  */
 void WriteRegisterAD9833(int dat){
-  SPI.beginTransaction(mode2);
+  SPI.end();
+  shiftOut(DATA_PIN, SCK, MSBFIRST, 0xFB); //was 0xF7
+  SPI.begin();
+  SPI.beginTransaction(mode3);
+  PORTD |= _BV(2);   // toggle latchPin HIGH
+  PORTD &= ~_BV(2);   // toggle latchPin LOW
+  PORTD |= _BV(4);           // toggle DATA_PIN HIGH
   SPI.transfer(highByte(dat));
   SPI.transfer(lowByte(dat));
   SPI.endTransaction();
+  PORTD |= _BV(2);   // toggle latchPin HIGH
+  PORTD &= ~_BV(2);   // toggle latchPin LOW
+  PORTD &= ~_BV(4);   // toggle DATA_PIN LOW
 }  
 
 /*
@@ -234,7 +244,16 @@ void writeFreqDigitalPot(int level){
   PORTD &= ~_BV(4);   // toggle DATA_PIN LOW
 }
 
-
+void shiftOutFuct(uint8_t data) {
+  //SPI.end();
+  for (i=0;i<8;i++) {
+  //shift MSB bits by i  
+  PORTB ^= _BV(5);
+  }
+  PORTD |= _BV(2);   // toggle latchPin HIGH
+  PORTD &= ~_BV(2);   // toggle latchPin LOW
+  //SPI.begin();
+}
 
 
 
