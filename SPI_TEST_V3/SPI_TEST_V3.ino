@@ -36,6 +36,7 @@ void setup() {
   OCR1A = 0;                         //top value for counter (0 for 8.00185MHz, 1 for 4.00396MHz, 7 for 1.000975MHz) 
   TCCR1B = _BV(WGM12) | _BV(CS10);   //CTC mode, prescaler clock/1
 
+<<<<<<< HEAD
   writeFreqDigitalPot(100);  //**********Problem with changing values***************
   //writeFreqGen(4000);
  
@@ -46,6 +47,18 @@ void setup() {
   //WriteRegisterAD9833(0x2002); // unset reset 0 & set triangle
   //writeFreqGen(4000);
 
+=======
+<<<<<<< HEAD
+  //Initialize DACs
+  initDACs();
+  
+  writeFreqDigitalPot(175);
+
+=======
+  writeFreqDigitalPot(200);
+  //writeFreqGen(4000);
+>>>>>>> origin/master
+>>>>>>> origin/master
 }
 
 void loop() {
@@ -244,6 +257,7 @@ void writeFreqDigitalPot(int level){
   PORTD &= ~_BV(4);   // toggle DATA_PIN LOW
 }
 
+<<<<<<< HEAD
 void shiftOutFuct(uint8_t data) {
   //SPI.end();
   for (i=0;i<8;i++) {
@@ -263,4 +277,88 @@ void shiftOutFuct(uint8_t data) {
 
 
 
+=======
+/*
+ * Function Name:   initDACs()
+ * 
+ * Description:
+ *      Initializes both DACs by writing the proper values to command register
+ * 
+ * Params:
+ * 
+ * Notes:
+ * 
+ */
+void initDACs(){
+  SPI.beginTransaction(mode1);
+  digitalWrite(SS_DAC_1, LOW);
+  SPI.transfer(0b01000000);
+  SPI.transfer(0b10000000);
+  SPI.transfer(0b0000000);
+  digitalWrite(SS_DAC_1, HIGH);
+  SPI.endTransaction();
+  
+  SPI.beginTransaction(mode1);
+  digitalWrite(SS_DAC_2, LOW);
+  SPI.transfer(0b01000000);
+  SPI.transfer(0b10000000);
+  SPI.transfer(0b0000000);
+  digitalWrite(SS_DAC_2, HIGH);
+  SPI.endTransaction();
+}
+
+/*
+ * Function Name:  setDAC()
+ *      
+ * Description:
+ *      Sets the specified voltage for the specified channel
+ *      
+ * Params:
+ *      voltage -     the voltage value to be set
+ *      DAC_Number -  the channel number of the DAC of interest
+ *      
+ * Notes:
+ *      Currently does not write the specified voltage, only writes 4.8 Volts
+ */
+void setDAC(double voltage, int DAC_Number){
+  // Convert voltage to 16 bit DAC value (1 bit = 0.000076293945313 Volts)
+  float floatingDAC_Value = (voltage / 0.000076293945313) + 0.5; // Approximate voltage 
+  uint32_t DAC_Value = floatingDAC_Value;
+ 
+  // DAC command bits
+  uint32_t writeInput=     0b00010000; // Write input register
+  uint32_t updateDAC =     0b00100000; // Update DAC
+  uint32_t writeDACInput = 0x00030000; // Write both DAC and input register
+  uint32_t writeControl =  0x00040000; // Write control register
+
+  // Combine command and DAC value and break up 24 bits into 3 bytes
+  //uint32_t SPI_Command = writeDACInput << 8; // Write Command data and shift 12 bits
+  //Serial.println(SPI_Command);
+  uint32_t SPI_Command = writeDACInput | DAC_Value;                   // Bitwise Or DAC value
+  SPI_Command <<= 4;
+
+  byte0 = (SPI_Command >> 16);  // Write first byte
+  byte1 = (SPI_Command >> 8);   // Write second byte
+  byte2 = (SPI_Command);        // Write third byte
+
+  SPI.beginTransaction(mode1);
+  if(DAC_Number == 1){
+    digitalWrite(SS_DAC_1, LOW);
+    SPI.transfer(byte0);
+    SPI.transfer(byte1);
+    SPI.transfer(byte2);
+    digitalWrite(SS_DAC_1, HIGH);
+  }else if(DAC_Number == 2){
+    digitalWrite(SS_DAC_2, LOW);
+    SPI.transfer(byte0);
+    SPI.transfer(byte1);
+    SPI.transfer(byte2);
+    digitalWrite(SS_DAC_2, HIGH);
+  }else{
+    Serial.println("Nope Chuck Testa");
+  }
+  SPI.endTransaction();
+  
+}
+>>>>>>> origin/master
 
